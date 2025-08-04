@@ -15,6 +15,7 @@ function formatDateISO(d) {
 function accessorFrom(fieldPath) {
   if (fieldPath === "date") return "date";
   const [root] = fieldPath.split(".");
+  //if the root is not found, we return "value"  -fal
   return root || "value";
 }
 
@@ -92,14 +93,28 @@ function buildTwoKeyTable(data, fieldA, fieldB, headerA, headerB) {
   const grouped = groupByFields(source, [fieldA, fieldB]);
   const summed = sumNestedHours(grouped); // { A: { B: number } }
 
-  // Flatten into rows like: [{ employee: "Alice", project: "A", hours: 7 }, ...]
+  // Create a list of table rows from the nested totals object
   const rows = [];
-  for (const [aValue, inner] of Object.entries(summed)) {
-    for (const [bValue, hours] of Object.entries(inner)) {
-      rows.push({ [aKey]: aValue, [bKey]: bValue, hours });
+
+  for (const [firstGroupName, totalsBySecondGroup] of Object.entries(summed)) {
+    // firstGroupName = value for the first column (e.g., employee name)
+    // totalsBySecondGroup = object where keys are second column values (e.g., project names)
+    //                       and values are the total hours
+
+    for (const [secondGroupName, totalHours] of Object.entries(totalsBySecondGroup)) {
+      // secondGroupName = value for the second column (e.g., project name)
+      // totalHours = summed hours for this combination of first+second group
+
+      rows.push({
+        [aKey]: firstGroupName,   // e.g., employee: "Alice"
+        [bKey]: secondGroupName,  // e.g., project: "Project A"
+        hours: totalHours,
+      });
     }
   }
-  rows.sort((x, y) => y.hours - x.hours);
+
+  // Sort rows so that the highest total hours come first
+  rows.sort((rowA, rowB) => rowB.hours - rowA.hours);
 
   const columns = [
     { key: aKey, header: headerA },
